@@ -1,11 +1,10 @@
 import com.formdev.flatlaf.FlatLightLaf;
 import javax.swing.*;
 import javax.swing.border.EmptyBorder;
-import javax.swing.table.DefaultTableModel;
-import javax.swing.table.TableRowSorter;
+import javax.swing.table.*;
 import java.awt.*;
 import java.awt.event.*;
-import java.util.ArrayList;
+import java.util.List;
 
 public class MainFrame extends JFrame {
 
@@ -15,189 +14,257 @@ public class MainFrame extends JFrame {
     private JTextField txtGiaTu, txtGiaDen;
     private DB db = new DB();
 
-    // Màu sắc chủ đạo (Brand Colors)
-    private final Color PRIMARY_COLOR = new Color(63, 81, 181); // Blue Indigo
+    private boolean tangDan = true;
 
     public MainFrame() {
         initUI();
-        initEvents();
         loadDiaDiem();
     }
 
     private void initUI() {
-        setTitle("Hệ thống quản lý danh sách địa điểm giải trí tại Hà Nội");
-        setSize(900, 600);
+        setTitle("Quản lý địa điểm Hà Nội");
+        setSize(1000, 600);
         setLocationRelativeTo(null);
         setDefaultCloseOperation(EXIT_ON_CLOSE);
 
-        // Panel chính với Padding lớn để tạo khoảng trống
-        JPanel mainPanel = new JPanel(new BorderLayout(15, 15));
-        mainPanel.setBorder(new EmptyBorder(20, 20, 20, 20));
-        mainPanel.setBackground(Color.WHITE);
-        setContentPane(mainPanel);
+        JPanel main = new JPanel(new BorderLayout(15, 15));
+        main.setBorder(new EmptyBorder(20, 20, 20, 20));
+        setContentPane(main);
 
-        // --- HEADER AREA ---
-        JPanel headerPanel = new JPanel(new BorderLayout());
-        headerPanel.setOpaque(false);
+        // ===== HEADER =====
+        JPanel header = new JPanel(new BorderLayout());
 
-        JLabel lblTitle = new JLabel("Danh sách điểm đến hot nhất");
-        lblTitle.setFont(new Font("Segoe UI", Font.BOLD, 24));
-        lblTitle.setForeground(new Color(33, 33, 33));
-        headerPanel.add(lblTitle, BorderLayout.WEST);
+        JLabel title = new JLabel("Danh sách địa điểm");
+        title.setFont(new Font("Segoe UI", Font.BOLD, 24));
+        header.add(title, BorderLayout.WEST);
 
-        // --- FILTER AREA (Gọn gàng hơn) ---
-        JPanel filterPanel = new JPanel(new FlowLayout(FlowLayout.RIGHT));
-        filterPanel.setOpaque(false);
+        JPanel panel = new JPanel(new FlowLayout(FlowLayout.RIGHT));
 
-        txtGiaTu = new JTextField(8);
-        txtGiaDen = new JTextField(8);
+        txtGiaTu = new JTextField(6);
+        txtGiaDen = new JTextField(6);
 
-        // Custom Placeholder (Gợi ý nhập liệu)
-        txtGiaTu.putClientProperty("JTextField.placeholderText", "Giá từ...");
-        txtGiaDen.putClientProperty("JTextField.placeholderText", "đến...");
+        JButton btnLoc = new JButton("Lọc");
+        JButton btnReset = new JButton("Reset");
+        JButton btnThem = new JButton("Thêm");
+        JButton btnSua = new JButton("Sửa");
+        JButton btnXoa = new JButton("Xóa");
+        JButton btnSort = new JButton("Ưu tiên ↑");
+        JButton btnJoin = new JButton("Tổng chi phí");
+        JButton btnXem = new JButton("Xem");
 
-        JButton btnLoc = new JButton("Tìm kiếm");
-        btnLoc.setBackground(PRIMARY_COLOR);
-        btnLoc.setForeground(Color.WHITE);
-        btnLoc.putClientProperty("JButton.buttonType", "roundRect"); // Bo góc nút
+        panel.add(new JLabel("Giá:"));
+        panel.add(txtGiaTu);
+        panel.add(txtGiaDen);
+        panel.add(btnLoc);
+        panel.add(btnReset);
+        panel.add(btnThem);
+        panel.add(btnSua);
+        panel.add(btnXoa);
+        panel.add(btnSort);
+        panel.add(btnJoin);
+        panel.add(btnXem);
 
-        JButton btnReset = new JButton("Làm mới");
-        btnReset.putClientProperty("JButton.buttonType", "roundRect");
+        header.add(panel, BorderLayout.EAST);
+        main.add(header, BorderLayout.NORTH);
 
-        filterPanel.add(new JLabel("Ngân sách:"));
-        filterPanel.add(txtGiaTu);
-        filterPanel.add(txtGiaDen);
-        filterPanel.add(btnLoc);
-        filterPanel.add(btnReset);
+        // ===== TABLE =====
+        String[] cols = {"ID", "Tên", "Tỉnh", "Chi phí", "Ưu tiên", "Tổng"};
 
-        headerPanel.add(filterPanel, BorderLayout.EAST);
-        mainPanel.add(headerPanel, BorderLayout.NORTH);
-
-        // --- TABLE AREA ---
-        String[] columnNames = {"ID", "Địa điểm", "Tỉnh", "Chi phí", "Ưu tiên"};
-        model = new DefaultTableModel(columnNames, 0) {
-            @Override
-            public boolean isCellEditable(int row, int column) { return false; }
+        model = new DefaultTableModel(cols, 0) {
+            public boolean isCellEditable(int r, int c) { return false; }
         };
 
         tableDiaDiem = new JTable(model);
         sorter = new TableRowSorter<>(model);
         tableDiaDiem.setRowSorter(sorter);
 
-        // Styling cho Table
-        tableDiaDiem.setRowHeight(40); // Dòng cao hơn nhìn sang hơn
-        tableDiaDiem.setShowVerticalLines(false); // Bỏ vạch kẻ dọc
-        tableDiaDiem.setIntercellSpacing(new Dimension(0, 5)); // Khoảng cách giữa các dòng
-        tableDiaDiem.getTableHeader().setFont(new Font("Segoe UI", Font.BOLD, 14));
-        tableDiaDiem.setFont(new Font("Segoe UI", Font.PLAIN, 14));
-        tableDiaDiem.setSelectionBackground(new Color(232, 234, 246));
-        tableDiaDiem.setSelectionForeground(Color.BLACK);
+        main.add(new JScrollPane(tableDiaDiem), BorderLayout.CENTER);
 
-        JScrollPane scrollPane = new JScrollPane(tableDiaDiem);
-        scrollPane.setBorder(BorderFactory.createEmptyBorder()); // Bỏ viền ScrollPane
-        mainPanel.add(scrollPane, BorderLayout.CENTER);
+        // ===== EVENTS =====
+        btnThem.addActionListener(e -> them());
+        btnSua.addActionListener(e -> sua());
+        btnXoa.addActionListener(e -> xoa());
+        btnXem.addActionListener(e -> xemChiTiet());
 
-        // --- FOOTER ---
-        JLabel lblStatus = new JLabel("Double-click để xem lịch trình chi tiết");
-        lblStatus.setFont(new Font("Segoe UI", Font.ITALIC, 12));
-        lblStatus.setForeground(Color.GRAY);
-        mainPanel.add(lblStatus, BorderLayout.SOUTH);
+        btnLoc.addActionListener(e -> loc());
 
-        // Event Buttons
-        btnLoc.addActionListener(e -> thucHienLoc());
         btnReset.addActionListener(e -> {
             txtGiaTu.setText("");
             txtGiaDen.setText("");
             sorter.setRowFilter(null);
         });
-    }
 
-    // Đã sửa lại lỗi copy-paste ở hàm này
-    private void thucHienLoc() {
-        String strTu = txtGiaTu.getText().trim();
-        String strDen = txtGiaDen.getText().trim();
+        btnSort.addActionListener(e -> {
+            sorter.setSortKeys(List.of(
+                    new RowSorter.SortKey(4,
+                            tangDan ? SortOrder.ASCENDING : SortOrder.DESCENDING)
+            ));
+            tangDan = !tangDan;
+            btnSort.setText(tangDan ? "Ưu tiên ↑" : "Ưu tiên ↓");
+        });
 
-        try {
-            final double giaTu = strTu.isEmpty() ? 0 : Double.parseDouble(strTu);
-            final double giaDen = strDen.isEmpty() ? Double.MAX_VALUE : Double.parseDouble(strDen);
+        // ✅ NÚT TỔNG CHI PHÍ
+        btnJoin.addActionListener(e -> loadJoin());
 
-            RowFilter<DefaultTableModel, Object> filter = new RowFilter<DefaultTableModel, Object>() {
-                @Override
-                public boolean include(Entry<? extends DefaultTableModel, ? extends Object> entry) {
-                    try {
-                        String giaStr = entry.getStringValue(3).replaceAll("[^0-9.]", "");
-                        double giaHienTai = Double.parseDouble(giaStr);
-                        return (giaHienTai >= giaTu && giaHienTai <= giaDen);
-                    } catch (Exception e) {
-                        return false;
-                    }
-                }
-            };
-
-            sorter.setRowFilter(filter);
-
-        } catch (NumberFormatException e) {
-            JOptionPane.showMessageDialog(this,
-                    "Vui lòng chỉ nhập số vào ô ngân sách!",
-                    "Lỗi nhập liệu",
-                    JOptionPane.ERROR_MESSAGE);
-        }
-    }
-
-    private void initEvents() {
+        // ✅ DOUBLE CLICK → POPUP CRUD
         tableDiaDiem.addMouseListener(new MouseAdapter() {
-            @Override
-            public void mouseClicked(MouseEvent evt) {
-                if (evt.getClickCount() == 2) {
-                    openDetailDialog();
+            public void mouseClicked(MouseEvent e) {
+                if (e.getClickCount() == 2) {
+
+                    int row = tableDiaDiem.getSelectedRow();
+                    if (row == -1) return;
+
+                    int m = tableDiaDiem.convertRowIndexToModel(row);
+                    int id = Integer.parseInt(model.getValueAt(m, 0).toString());
+
+                    new ChiPhiFrame(MainFrame.this, id).setVisible(true);
                 }
             }
         });
     }
 
-    // Đã bổ sung logic mở Dialog (Sử dụng đúng index khi dùng Sorter)
-    private void openDetailDialog() {
-        int viewRow = tableDiaDiem.getSelectedRow();
-        if (viewRow == -1) return;
+    // ================= CRUD =================
 
-        try {
-            int modelRow = tableDiaDiem.convertRowIndexToModel(viewRow);
-            Object idValue = model.getValueAt(modelRow, 0);
-            int id = Integer.parseInt(idValue.toString());
+    private void them() {
+        JTextField ten = new JTextField();
+        JTextField tinh = new JTextField();
+        JTextField gia = new JTextField();
+        JTextField uuTien = new JTextField();
 
-            ChiPhiFrame dialog = new ChiPhiFrame(this, id);
-            dialog.setVisible(true);
+        Object[] msg = {"Tên:", ten, "Tỉnh:", tinh, "Chi phí:", gia, "Ưu tiên:", uuTien};
 
-            loadDiaDiem();
-        } catch (Exception e) {
-            JOptionPane.showMessageDialog(this, "Lỗi khi mở chi tiết: " + e.getMessage(), "Lỗi", JOptionPane.ERROR_MESSAGE);
+        if (JOptionPane.showConfirmDialog(this, msg, "Thêm",
+                JOptionPane.OK_CANCEL_OPTION) == JOptionPane.OK_OPTION) {
+            try {
+                db.insertDiaDiem(
+                        ten.getText(),
+                        tinh.getText(),
+                        Double.parseDouble(gia.getText()),
+                        Integer.parseInt(uuTien.getText())
+                );
+                loadDiaDiem();
+            } catch (Exception e) {
+                JOptionPane.showMessageDialog(this, "Lỗi: " + e.getMessage());
+            }
         }
     }
 
-    public void loadDiaDiem() {
-        model.setRowCount(0);
-        try {
-            ArrayList<String[]> list = db.getDiaDiem();
-            if (list != null) {
-                for (String[] row : list) {
-                    model.addRow(row);
-                }
+    private void sua() {
+        int row = tableDiaDiem.getSelectedRow();
+        if (row == -1) return;
+
+        int m = tableDiaDiem.convertRowIndexToModel(row);
+        int id = Integer.parseInt(model.getValueAt(m, 0).toString());
+
+        JTextField ten = new JTextField(model.getValueAt(m, 1).toString());
+        JTextField tinh = new JTextField(model.getValueAt(m, 2).toString());
+        JTextField gia = new JTextField(model.getValueAt(m, 3).toString());
+        JTextField uuTien = new JTextField(model.getValueAt(m, 4).toString());
+
+        Object[] msg = {"Tên:", ten, "Tỉnh:", tinh, "Chi phí:", gia, "Ưu tiên:", uuTien};
+
+        if (JOptionPane.showConfirmDialog(this, msg, "Sửa",
+                JOptionPane.OK_CANCEL_OPTION) == JOptionPane.OK_OPTION) {
+            try {
+                db.updateDiaDiem(
+                        id,
+                        ten.getText(),
+                        tinh.getText(),
+                        Double.parseDouble(gia.getText()),
+                        Integer.parseInt(uuTien.getText())
+                );
+                loadDiaDiem();
+            } catch (Exception e) {
+                JOptionPane.showMessageDialog(this, "Lỗi: " + e.getMessage());
             }
+        }
+    }
+
+    private void xoa() {
+        int row = tableDiaDiem.getSelectedRow();
+        if (row == -1) return;
+
+        int m = tableDiaDiem.convertRowIndexToModel(row);
+        int id = Integer.parseInt(model.getValueAt(m, 0).toString());
+
+        if (JOptionPane.showConfirmDialog(this, "Xóa?",
+                "Xác nhận", JOptionPane.YES_NO_OPTION) == JOptionPane.YES_OPTION) {
+            try {
+                db.deleteDiaDiem(id);
+                loadDiaDiem();
+            } catch (Exception e) {
+                JOptionPane.showMessageDialog(this, "Lỗi: " + e.getMessage());
+            }
+        }
+    }
+
+    // ================= FILTER =================
+
+    private void loc() {
+        try {
+            double tu = txtGiaTu.getText().isEmpty() ? 0 : Double.parseDouble(txtGiaTu.getText());
+            double den = txtGiaDen.getText().isEmpty() ? Double.MAX_VALUE : Double.parseDouble(txtGiaDen.getText());
+
+            sorter.setRowFilter(new RowFilter<>() {
+                public boolean include(Entry entry) {
+                    double gia = Double.parseDouble(entry.getStringValue(3));
+                    return gia >= tu && gia <= den;
+                }
+            });
+
         } catch (Exception e) {
-            System.err.println("Lỗi load dữ liệu: " + e.getMessage());
+            JOptionPane.showMessageDialog(this, "Nhập sai!");
+        }
+    }
+
+    // ================= XEM CHI TIẾT =================
+
+    private void xemChiTiet() {
+        int row = tableDiaDiem.getSelectedRow();
+        if (row == -1) return;
+
+        int m = tableDiaDiem.convertRowIndexToModel(row);
+
+        JPanel p = new JPanel(new GridLayout(0, 2, 10, 10));
+
+        p.add(new JLabel("Tên:"));
+        p.add(new JLabel(model.getValueAt(m, 1).toString()));
+
+        p.add(new JLabel("Tỉnh:"));
+        p.add(new JLabel(model.getValueAt(m, 2).toString()));
+
+        p.add(new JLabel("Chi phí:"));
+        p.add(new JLabel(model.getValueAt(m, 3).toString()));
+
+        p.add(new JLabel("Ưu tiên:"));
+        p.add(new JLabel(model.getValueAt(m, 4).toString()));
+
+        p.add(new JLabel("Tổng:"));
+        p.add(new JLabel(model.getValueAt(m, 5).toString()));
+
+        JOptionPane.showMessageDialog(this, p);
+    }
+
+    // ================= LOAD =================
+
+    private void loadDiaDiem() {
+        model.setRowCount(0);
+        for (String[] r : db.getDiaDiem()) {
+            model.addRow(new Object[]{
+                    r[0], r[1], r[2], r[3], r[4], "0"
+            });
+        }
+    }
+
+    private void loadJoin() {
+        model.setRowCount(0);
+        for (String[] r : db.getDiaDiemWithTongChiPhi()) {
+            model.addRow(r);
         }
     }
 
     public static void main(String[] args) {
-        try {
-            FlatLightLaf.setup();
-            UIManager.put("Button.arc", 15);
-            UIManager.put("Component.arc", 15);
-            UIManager.put("TextComponent.arc", 15);
-        } catch (Exception e) {
-            e.printStackTrace();
-        }
-
+        FlatLightLaf.setup();
         SwingUtilities.invokeLater(() -> new MainFrame().setVisible(true));
     }
 }
